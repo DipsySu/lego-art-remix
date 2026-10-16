@@ -23,7 +23,7 @@ What changed on 16 October 2026:
 - Export a PNG, printable plate instructions, a BrickLink wanted list, or the palette JSON used by the classic app.
 - English and Chinese. Switch with 中文 / EN in the header, or open `?lang=zh` / `?lang=en`. The choice is saved in this browser.
 
-The studio is published on this repository’s GitHub Pages site: <https://dipsysu.github.io/lego-art-remix/>.
+The studio is built for this repository’s GitHub Pages site: <https://dipsysu.github.io/lego-art-remix/>. Pushes publish `studio/dist` to the `gh-pages` branch. In the repository settings, choose Pages → Deploy from a branch → `gh-pages` → `/ (root)`. Do not add a custom domain; that would replace this project site.
 
 The classic client remains in `app/`. It still has the in-browser MiDaS depth model and variable-size plate packing. The studio keeps 1×1 tiles, plates, and bricks, which covers the usual Art mosaic.
 

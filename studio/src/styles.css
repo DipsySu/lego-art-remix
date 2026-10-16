@@ -235,7 +235,7 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 560;
 }
 .btn.primary { background: var(--accent); border-color: transparent; color: white; }
-.btn.tiny { padding: 5px 8px; border-radius: 9px; font-size: 12px; }
+.btn.tiny { padding: 5px 8px; border-radius: 9px; font-size: 12px; white-space: nowrap; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .segmented { display: flex; padding: 3px; gap: 3px; background: var(--chip); border-radius: 12px; border: 1px solid var(--line); }
 .segmented button {
@@ -387,6 +387,8 @@ dialog p { color: var(--muted); line-height: 1.5; }
 dialog a { color: var(--accent-2); }
 
 @media (max-width: 980px) {
+  .topbar { flex-wrap: wrap; align-items: flex-start; }
+  .top-actions { width: 100%; margin-left: 0; flex-wrap: wrap; }
   .app { height: auto; min-height: 100%; overflow: visible; }
   .workspace { display: flex; flex-direction: column; overflow: visible; }
   .stage { min-height: 70vh; order: -1; }
