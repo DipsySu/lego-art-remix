@@ -6,14 +6,14 @@
     <title>Art Remix — Lego mosaic studio</title>
     <meta
       name="description"
-      content="Turn a photo into a Lego stud mosaic using the pieces from a set you already own. Everything runs in the browser."
+      content="Turn a photo into a Lego stud mosaic using the pieces from a set you already own. Everything runs in the browser. 把照片变成乐高颗粒马赛克，图片只留在浏览器里。"
     />
     <meta name="theme-color" content="#16130f" />
-    <link rel="icon" href="/png/icon-192x192.png" />
+    <link rel="icon" href="%BASE_URL%png/icon-192x192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Outfit:wght@380;460;560;650&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Noto+Sans+SC:wght@400;500;650&family=Outfit:wght@380;460;560;650&display=swap"
       rel="stylesheet"
     />
     <script>
@@ -25,6 +25,23 @@
         document.documentElement.dataset.theme = theme;
       } catch (_error) {
         document.documentElement.dataset.theme = "dark";
+      }
+      try {
+        const query = new URLSearchParams(location.search).get("lang");
+        const stored = localStorage.getItem("art-remix-locale");
+        const locale =
+          query === "zh" || query === "en"
+            ? query
+            : stored === "zh" || stored === "en"
+              ? stored
+              : (navigator.language || "").toLowerCase().startsWith("zh")
+                ? "zh"
+                : "en";
+        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+        document.documentElement.dataset.locale = locale;
+        document.title = locale === "zh" ? "Art Remix — 乐高马赛克工作台" : "Art Remix — Lego mosaic studio";
+      } catch (_error) {
+        document.documentElement.lang = "en";
       }
     </script>
   </head>

@@ -1,4 +1,4 @@
-import { COLOR_BY_HEX, colorName } from "../data/catalog";
+import { COLOR_BY_HEX } from "../data/catalog";
 import type { PieceId } from "./pieces";
 import { pieceById } from "./pieces";
 
@@ -87,6 +87,15 @@ export function instructionsHtml(options: {
   depth: Uint8Array | null;
   pieceName: string;
   usage: Map<string, number>;
+  lang: string;
+  titleSuffix: string;
+  meta: string;
+  piecesHeading: string;
+  plateLabel: (number: number) => string;
+  rangeLabel: (fromRow: number, toRow: number, fromCol: number, toCol: number) => string;
+  reliefHeading: string;
+  reliefBody: string;
+  labelColor: (hex: string) => string;
 }): string {
   const legend = [...options.usage.entries()].sort((a, b) => b[1] - a[1]);
   const symbol = new Map(legend.map(([hex], index) => [hex, cellSymbol(index)]));
@@ -105,14 +114,14 @@ export function instructionsHtml(options: {
           const mark = symbol.get(hex) ?? "?";
           const ink = luminanceOf(hex) > 150 ? "#1a140f" : "#fffaf3";
           cells.push(
-            `<i style="background:${hex};color:${ink}" title="${escapeHtml(colorName(hex))}">${mark}</i>`,
+            `<i style="background:${hex};color:${ink}" title="${escapeHtml(options.labelColor(hex))}">${mark}</i>`,
           );
         }
         rows.push(`<div class="row">${cells.join("")}</div>`);
       }
       const plateNumber = plates.length + 1;
       plates.push(
-        `<section><h2>Plate ${plateNumber} <small>rows ${top + 1}–${top + plateHeight}, columns ${left + 1}–${left + plateWidth}</small></h2><div class="plate">${rows.join("")}</div></section>`,
+        `<section><h2>${escapeHtml(options.plateLabel(plateNumber))} <small>${escapeHtml(options.rangeLabel(top + 1, top + plateHeight, left + 1, left + plateWidth))}</small></h2><div class="plate">${rows.join("")}</div></section>`,
       );
     }
   }
@@ -120,22 +129,22 @@ export function instructionsHtml(options: {
   const legendHtml = legend
     .map(([hex, count]) => {
       const mark = symbol.get(hex);
-      return `<li><i style="background:${hex}">${mark}</i><span>${escapeHtml(colorName(hex))}</span><b>${count}</b></li>`;
+      return `<li><i style="background:${hex}">${mark}</i><span>${escapeHtml(options.labelColor(hex))}</span><b>${count}</b></li>`;
     })
     .join("");
 
   const depthSection =
     options.depth == null
       ? ""
-      : `<section><h2>Relief levels</h2><p>0 sits on the base. Higher numbers stack further forward.</p>${depthGrid(options)}</section>`;
+      : `<section><h2>${escapeHtml(options.reliefHeading)}</h2><p>${escapeHtml(options.reliefBody)}</p>${depthGrid(options)}</section>`;
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(options.lang)}">
 <meta charset="utf-8" />
-<title>${escapeHtml(options.title)} — mosaic instructions</title>
+<title>${escapeHtml(options.title)} — ${escapeHtml(options.titleSuffix)}</title>
 <style>
-  body { font-family: Outfit, "Segoe UI", sans-serif; margin: 24px; color: #1c1612; background: #f6f1ea; }
-  h1 { font-family: Fraunces, Georgia, serif; margin-bottom: 0; }
+  body { font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Outfit, "Segoe UI", sans-serif; margin: 24px; color: #1c1612; background: #f6f1ea; }
+  h1 { font-family: Fraunces, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", Georgia, serif; margin-bottom: 0; }
   h2 { font-size: 16px; margin: 0 0 8px; }
   h2 small { font-weight: 450; color: #6d6258; }
   .meta { color: #6d6258; margin-bottom: 24px; }
@@ -150,8 +159,8 @@ export function instructionsHtml(options: {
   @media print { body { background: white; } section { break-inside: avoid; } }
 </style>
 <h1>${escapeHtml(options.title)}</h1>
-<p class="meta">${options.width} × ${options.height} studs · ${escapeHtml(options.pieceName)} · Not an official LEGO instruction booklet</p>
-<h2>Pieces</h2>
+<p class="meta">${escapeHtml(options.meta)}</p>
+<h2>${escapeHtml(options.piecesHeading)}</h2>
 <ul class="legend">${legendHtml}</ul>
 ${plates.join("")}
 ${depthSection}

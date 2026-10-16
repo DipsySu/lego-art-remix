@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useI18n } from "../i18n/locale";
 import type { Adjustments } from "../lib/color";
 import { NEUTRAL_ADJUSTMENTS } from "../lib/color";
 import type { Crop } from "../lib/image";
@@ -43,6 +44,7 @@ export function SourcePanel({
   onAdjustments,
   onReplace,
 }: SourcePanelProps) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ x: number; y: number; crop: Crop } | null>(null);
   const aspect = studsW / studsH;
@@ -103,9 +105,9 @@ export function SourcePanel({
       <div className="panel-scroll">
         <section>
           <div className="section-title">
-            <span>Frame</span>
+            <span>{t("frame")}</span>
             <button className="btn tiny" type="button" onClick={onReplace}>
-              Replace
+              {t("replace")}
             </button>
           </div>
           <div
@@ -122,16 +124,16 @@ export function SourcePanel({
           >
             <canvas ref={canvasRef} />
           </div>
-          <p className="hint">{imageName}. Drag to move, scroll to zoom.</p>
+          <p className="hint">{t("frameHint", { name: imageName })}</p>
           <div className="slider-row" style={{ marginTop: 8 }}>
-            <span>Zoom</span>
+            <span>{t("zoom")}</span>
             <input
               type="range"
               min={1}
               max={6}
               step={0.01}
               value={Math.min(6, Math.max(1, zoom))}
-              aria-label="Zoom into the photo"
+              aria-label={t("zoomPhoto")}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 const factor = zoom / next;
@@ -144,14 +146,14 @@ export function SourcePanel({
 
         <section>
           <div className="section-title">
-            <span>Studs</span>
+            <span>{t("studs")}</span>
             <span className="measure">
               {(studsW * STUD_CM).toFixed(1)} × {(studsH * STUD_CM).toFixed(1)} cm
             </span>
           </div>
           <div className="grid-2">
-            <SizeField label="Width" value={studsW} onChange={onStudsW} />
-            <SizeField label="Height" value={studsH} onChange={onStudsH} />
+            <SizeField label={t("width")} value={studsW} onChange={onStudsW} decrease={t("decrease", { label: t("width") })} increase={t("increase", { label: t("width") })} />
+            <SizeField label={t("height")} value={studsH} onChange={onStudsH} decrease={t("decrease", { label: t("height") })} increase={t("increase", { label: t("height") })} />
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             <div className="presets grow">
@@ -172,47 +174,47 @@ export function SourcePanel({
                 checked={linked}
                 onChange={(event) => onLinked(event.target.checked)}
               />
-              Link
+              {t("link")}
             </label>
           </div>
           <label className="check" style={{ marginTop: 8 }}>
             <input type="checkbox" checked={smooth} onChange={(event) => onSmooth(event.target.checked)} />
-            Smooth the photo before sampling
+            {t("smooth")}
           </label>
-          <p className="hint">Each stud is 0.8 cm. Official Art mosaics are often 48×48.</p>
+          <p className="hint">{t("studSizeHint")}</p>
         </section>
 
         <section>
           <div className="section-title">
-            <span>Color</span>
+            <span>{t("color")}</span>
             <button className="btn tiny" type="button" onClick={() => onAdjustments(NEUTRAL_ADJUSTMENTS)}>
-              Reset
+              {t("reset")}
             </button>
           </div>
-          <Slider label="Hue" min={-180} max={180} value={adjustments.hue} onChange={(hue) => onAdjustments({ ...adjustments, hue })} />
+          <Slider label={t("hue")} min={-180} max={180} value={adjustments.hue} onChange={(hue) => onAdjustments({ ...adjustments, hue })} />
           <Slider
-            label="Saturation"
+            label={t("saturation")}
             min={-100}
             max={100}
             value={adjustments.saturation}
             onChange={(saturation) => onAdjustments({ ...adjustments, saturation })}
           />
           <Slider
-            label="Value"
+            label={t("value")}
             min={-100}
             max={100}
             value={adjustments.value}
             onChange={(value) => onAdjustments({ ...adjustments, value })}
           />
           <Slider
-            label="Brightness"
+            label={t("brightness")}
             min={-128}
             max={128}
             value={adjustments.brightness}
             onChange={(brightness) => onAdjustments({ ...adjustments, brightness })}
           />
           <Slider
-            label="Contrast"
+            label={t("contrast")}
             min={-128}
             max={128}
             value={adjustments.contrast}
@@ -224,7 +226,19 @@ export function SourcePanel({
   );
 }
 
-function SizeField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function SizeField({
+  label,
+  value,
+  onChange,
+  decrease,
+  increase,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  decrease: string;
+  increase: string;
+}) {
   function set(next: number) {
     onChange(Math.min(160, Math.max(8, Math.round(next))));
   }
@@ -232,7 +246,7 @@ function SizeField({ label, value, onChange }: { label: string; value: number; o
     <label className="field">
       {label}
       <div className="stepper">
-        <button type="button" aria-label={`Decrease ${label}`} onClick={() => set(value - 1)}>
+        <button type="button" aria-label={decrease} onClick={() => set(value - 1)}>
           −
         </button>
         <input
@@ -243,7 +257,7 @@ function SizeField({ label, value, onChange }: { label: string; value: number; o
           value={value}
           onChange={(event) => set(Number(event.target.value))}
         />
-        <button type="button" aria-label={`Increase ${label}`} onClick={() => set(value + 1)}>
+        <button type="button" aria-label={increase} onClick={() => set(value + 1)}>
           +
         </button>
       </div>

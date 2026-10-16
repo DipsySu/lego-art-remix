@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { COLORS, SETS, colorName, setById } from "../data/catalog";
+import { useI18n } from "../i18n/locale";
+import type { MessageKey } from "../i18n/messages";
+import { colorLabel, colorSearchText, PIECE_KEY, setLabel } from "../i18n/names";
 import type { DistanceMetric, PaletteEntry, QuantizeAlgorithm, TieMode } from "../lib/quantize";
 import { PIECES, type PieceId } from "../lib/pieces";
 import type { MosaicResult } from "../lib/pipeline";
@@ -42,26 +45,35 @@ interface InspectorProps {
   onImportPalette: (file: File) => void;
 }
 
-const ALGORITHMS: { id: QuantizeAlgorithm; name: string; note: string }[] = [
-  { id: "two-phase", name: "Match, then fit", note: "Closest color first. Overflow studs move to the next available color." },
-  { id: "greedy", name: "Greedy", note: "Scarce colors go to the studs that need them most." },
-  { id: "floyd", name: "Floyd–Steinberg", note: "Fine dither. Ignores piece counts so the pattern can form." },
-  { id: "atkinson", name: "Atkinson", note: "Lighter dither that keeps more of the original contrast." },
-  { id: "jarvis", name: "Jarvis–Judice–Ninke", note: "Wider dither, softer grain." },
-  { id: "sierra", name: "Sierra", note: "A middle ground between Floyd and Jarvis." },
+const ALGORITHMS: { id: QuantizeAlgorithm; name: MessageKey; note: MessageKey }[] = [
+  { id: "two-phase", name: "algoTwoPhase", note: "algoTwoPhaseNote" },
+  { id: "greedy", name: "algoGreedy", note: "algoGreedyNote" },
+  { id: "floyd", name: "algoFloyd", note: "algoFloydNote" },
+  { id: "atkinson", name: "algoAtkinson", note: "algoAtkinsonNote" },
+  { id: "jarvis", name: "algoJarvis", note: "algoJarvisNote" },
+  { id: "sierra", name: "algoSierra", note: "algoSierraNote" },
 ];
 
 export function Inspector(props: InspectorProps) {
+  const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
   const [mergeId, setMergeId] = useState(SETS[0].id);
   const active = ALGORITHMS.find((item) => item.id === props.algorithm) ?? ALGORITHMS[0];
   const dithering = ["floyd", "atkinson", "jarvis", "sierra"].includes(props.algorithm);
   const set = props.paletteId === "custom" ? null : setById(props.paletteId);
+  const setCopy = set ? setLabel(set.id, locale) : null;
+  const numberLocale = locale === "zh" ? "zh-CN" : "en";
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
-    return COLORS.filter((color) => color.name.toLowerCase().includes(needle) || color.hex.includes(needle)).slice(0, 6);
+    return COLORS.filter((color) => colorSearchText(color.name).includes(needle) || color.hex.includes(needle)).slice(0, 8);
   }, [query]);
+
+  function caption(hex: string): string {
+    const english = colorName(hex);
+    const label = colorLabel(hex, locale);
+    return locale === "zh" && label !== english ? `${label} · ${english}` : label;
+  }
 
   const used = props.mosaic ? [...props.mosaic.usage.entries()].sort((a, b) => b[1] - a[1]) : [];
   const budget = new Map(props.entries.map((entry) => [entry.hex, entry.count]));
@@ -85,40 +97,43 @@ export function Inspector(props: InspectorProps) {
     <aside className="panel inspector">
       <div className="panel-scroll">
         <section>
-          <h2 className="section-title">Palette</h2>
-          <select className="select" value={props.paletteId} aria-label="Palette" onChange={(event) => props.onSelectSet(event.target.value)}>
-            {props.paletteId === "custom" && <option value="custom">Custom mix</option>}
-            <optgroup label="Sets">
+          <h2 className="section-title">{t("palette")}</h2>
+          <select className="select" value={props.paletteId} aria-label={t("palette")} onChange={(event) => props.onSelectSet(event.target.value)}>
+            {props.paletteId === "custom" && <option value="custom">{t("customMix")}</option>}
+            <optgroup label={t("sets")}>
               {SETS.filter((item) => item.kind === "set").map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {setLabel(item.id, locale).name}
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Open palettes">
+            <optgroup label={t("openPalettes")}>
               {SETS.filter((item) => item.kind === "open").map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {setLabel(item.id, locale).name}
                 </option>
               ))}
             </optgroup>
           </select>
-          {set && <p className="hint">{set.description}</p>}
+          {setCopy && <p className="hint">{setCopy.description}</p>}
           <label className="check" style={{ marginTop: 8 }}>
             <input type="checkbox" checked={props.unlimited || dithering} disabled={dithering} onChange={(event) => props.onUnlimited(event.target.checked)} />
-            Unlimited counts
+            {t("unlimited")}
           </label>
           {!props.unlimited && !dithering && (
             <p className="hint">
-              {available.toLocaleString()} available for {props.needed.toLocaleString()} studs.
+              {t("availableFor", {
+                available: available.toLocaleString(numberLocale),
+                needed: props.needed.toLocaleString(numberLocale),
+              })}
             </p>
           )}
         </section>
 
         <section>
           <div className="section-title">
-            <span>Paint color</span>
-            <span>{colorName(props.paintColor)}</span>
+            <span>{t("paintColor")}</span>
+            <span>{caption(props.paintColor)}</span>
           </div>
           {props.unlimited || dithering ? (
             <div className="swatches">
@@ -128,8 +143,8 @@ export function Inspector(props: InspectorProps) {
                   type="button"
                   className={entry.hex === props.paintColor ? "swatch on" : "swatch"}
                   style={{ background: entry.hex }}
-                  title={colorName(entry.hex)}
-                  aria-label={colorName(entry.hex)}
+                  title={caption(entry.hex)}
+                  aria-label={caption(entry.hex)}
                   onClick={() => props.onPaintColor(entry.hex)}
                 />
               ))}
@@ -142,23 +157,23 @@ export function Inspector(props: InspectorProps) {
                     type="button"
                     className={entry.hex === props.paintColor ? "swatch on" : "swatch"}
                     style={{ background: entry.hex }}
-                    aria-label={`Paint with ${colorName(entry.hex)}`}
+                    aria-label={t("paintWith", { name: caption(entry.hex) })}
                     onClick={() => props.onPaintColor(entry.hex)}
                   />
-                  <span>{colorName(entry.hex)}</span>
+                  <span>{caption(entry.hex)}</span>
                   <input
                     className="number-input"
                     type="number"
                     min={0}
                     max={99999}
                     value={entry.count}
-                    aria-label={`${colorName(entry.hex)} count`}
+                    aria-label={t("countOf", { name: caption(entry.hex) })}
                     onChange={(event) => updateCount(entry.hex, Number(event.target.value))}
                   />
                   <button
                     className="icon-btn"
                     type="button"
-                    aria-label={`Remove ${colorName(entry.hex)}`}
+                    aria-label={t("removeColor", { name: caption(entry.hex) })}
                     onClick={() => {
                       if (props.entries.length === 1) return;
                       props.onEntries(props.entries.filter((item) => item.hex !== entry.hex));
@@ -173,9 +188,9 @@ export function Inspector(props: InspectorProps) {
           <input
             className="text-input"
             style={{ marginTop: 8 }}
-            placeholder="Add a BrickLink color"
+            placeholder={t("addColor")}
             value={query}
-            aria-label="Search colors"
+            aria-label={t("searchColors")}
             onChange={(event) => setQuery(event.target.value)}
           />
           {matches.length > 0 && (
@@ -183,100 +198,100 @@ export function Inspector(props: InspectorProps) {
               {matches.map((color) => (
                 <button key={color.hex} type="button" onClick={() => addColor(color.hex)}>
                   <i className="dot" style={{ background: color.hex }} />
-                  {color.name}
+                  {caption(color.hex)}
                 </button>
               ))}
             </div>
           )}
           <div className="row" style={{ marginTop: 8 }}>
-            <select className="select" aria-label="Set to merge" value={mergeId} onChange={(event) => setMergeId(event.target.value)}>
+            <select className="select" aria-label={t("mergeSet")} value={mergeId} onChange={(event) => setMergeId(event.target.value)}>
               {SETS.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {setLabel(item.id, locale).name}
                 </option>
               ))}
             </select>
             <button className="btn tiny" type="button" onClick={() => props.onMergeSet(mergeId)}>
-              Merge
+              {t("merge")}
             </button>
           </div>
         </section>
 
         <section>
-          <h2 className="section-title">Recipe</h2>
+          <h2 className="section-title">{t("recipe")}</h2>
           <label className="field">
-            Algorithm
+            {t("algorithm")}
             <select className="select" value={props.algorithm} onChange={(event) => props.onAlgorithm(event.target.value as QuantizeAlgorithm)}>
               {ALGORITHMS.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {t(item.name)}
                 </option>
               ))}
             </select>
           </label>
-          <p className="hint">{active.note}</p>
+          <p className="hint">{t(active.note)}</p>
           <label className="field" style={{ marginTop: 8 }}>
-            Color distance
+            {t("colorDistance")}
             <select className="select" value={props.metric} onChange={(event) => props.onMetric(event.target.value as DistanceMetric)}>
               <option value="ciede2000">CIEDE2000</option>
               <option value="cie76">CIE76</option>
-              <option value="rgb">Euclidean RGB</option>
+              <option value="rgb">{t("distanceRgb")}</option>
             </select>
           </label>
           <label className="field" style={{ marginTop: 8 }}>
-            Piece
+            {t("piece")}
             <select className="select" value={props.piece} onChange={(event) => props.onPiece(event.target.value as PieceId)}>
               {PIECES.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name}
+                  {t(PIECE_KEY[item.id])}
                 </option>
               ))}
             </select>
           </label>
           {props.algorithm === "two-phase" && !props.unlimited && (
             <label className="field" style={{ marginTop: 8 }}>
-              When colors tie
+              {t("tie")}
               <select className="select" value={props.tie} onChange={(event) => props.onTie(event.target.value as TieMode)}>
-                <option value="alternating">Alternating</option>
-                <option value="random">Random</option>
-                <option value="none">Stable</option>
+                <option value="alternating">{t("tieAlternating")}</option>
+                <option value="random">{t("tieRandom")}</option>
+                <option value="none">{t("tieStable")}</option>
               </select>
             </label>
           )}
           <label className="check" style={{ marginTop: 8 }}>
             <input type="checkbox" checked={props.bleed} onChange={(event) => props.onBleed(event.target.checked)} />
-            Match tiles on a black base
+            {t("bleed")}
           </label>
         </section>
 
         <section>
-          <h2 className="section-title">Relief</h2>
+          <h2 className="section-title">{t("relief")}</h2>
           <label className="check">
             <input type="checkbox" checked={props.depthEnabled} onChange={(event) => props.onDepthEnabled(event.target.checked)} />
-            Stack brighter studs forward
+            {t("reliefToggle")}
           </label>
           {props.depthEnabled && (
             <>
               <div className="slider-row" style={{ marginTop: 8 }}>
-                <span>Layers</span>
+                <span>{t("layers")}</span>
                 <input
                   type="range"
                   min={2}
                   max={6}
                   step={1}
                   value={props.depthLevels}
-                  aria-label="Relief layers"
+                  aria-label={t("reliefLayers")}
                   onChange={(event) => props.onDepthLevels(Number(event.target.value))}
                 />
                 <b>{props.depthLevels}</b>
               </div>
               <label className="check">
                 <input type="checkbox" checked={props.depthInvert} onChange={(event) => props.onDepthInvert(event.target.checked)} />
-                Invert
+                {t("invert")}
               </label>
               <div className="row" style={{ marginTop: 8 }}>
                 <label className="btn tiny">
-                  {props.depthName ? "Replace depth" : "Upload depth"}
+                  {props.depthName ? t("replaceDepth") : t("uploadDepth")}
                   <input
                     hidden
                     type="file"
@@ -290,14 +305,12 @@ export function Inspector(props: InspectorProps) {
                 </label>
                 {props.depthName && (
                   <button className="btn tiny" type="button" onClick={props.onClearDepth}>
-                    Use brightness
+                    {t("useBrightness")}
                   </button>
                 )}
               </div>
               <p className="hint">
-                {props.depthName
-                  ? `Depth picture: ${props.depthName}.`
-                  : "Uses brightness. Upload a depth picture if you already have one."}
+                {props.depthName ? t("depthNamed", { name: props.depthName }) : t("depthBrightness")}
               </p>
             </>
           )}
@@ -305,7 +318,7 @@ export function Inspector(props: InspectorProps) {
 
         <section>
           <div className="section-title">
-            <span>Pieces used</span>
+            <span>{t("piecesUsed")}</span>
             {props.mosaic && <span>ΔE {props.mosaic.averageError.toFixed(1)}</span>}
           </div>
           <ul className="usage">
@@ -315,7 +328,7 @@ export function Inspector(props: InspectorProps) {
               return (
                 <li key={hex}>
                   <i className="dot" style={{ background: hex }} />
-                  <span>{colorName(hex)}</span>
+                  <span>{caption(hex)}</span>
                   <b className={over ? "over" : undefined}>
                     {count}
                     {!props.unlimited && !dithering && allowed != null ? ` / ${allowed}` : ""}
@@ -331,16 +344,16 @@ export function Inspector(props: InspectorProps) {
           PNG
         </button>
         <button className="btn" type="button" onClick={props.onExportInstructions} disabled={!props.mosaic}>
-          Instructions
+          {t("instructions")}
         </button>
         <button className="btn" type="button" onClick={props.onExportXml} disabled={!props.mosaic}>
           BrickLink XML
         </button>
         <button className="btn" type="button" onClick={props.onExportPalette}>
-          Palette JSON
+          {t("paletteJson")}
         </button>
         <label className="btn" style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-          Import palette
+          {t("importPalette")}
           <input
             hidden
             type="file"

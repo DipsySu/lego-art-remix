@@ -6,8 +6,9 @@ import { defineConfig } from "vite";
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === "true" ? "/lego-art-remix/" : "/",
   plugins: [react()],
-  publicDir: path.resolve(root, "../app/assets"),
+  publicDir: path.resolve(root, "public"),
   server: {
     host: true,
     port: 5173,

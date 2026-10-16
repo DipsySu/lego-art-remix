@@ -14,13 +14,16 @@ import { pieceById, type PieceId } from "../lib/pieces";
 import { buildMosaic, type MosaicResult } from "../lib/pipeline";
 import type { DistanceMetric, PaletteEntry, QuantizeAlgorithm, TieMode } from "../lib/quantize";
 import { drawMosaic } from "../lib/render";
+import { useI18n } from "../i18n/locale";
+import { colorLabel, PIECE_KEY, setLabel } from "../i18n/names";
+import type { MessageKey } from "../i18n/messages";
 import { Inspector } from "./Inspector";
 import { SourcePanel } from "./SourcePanel";
 import { Stage, type PreviewMode, type Tool } from "./Stage";
 
-const SAMPLES = [
-  { name: "Lenna", url: "/png/lenna.png" },
-  { name: "Hogwarts crest", url: "/png/lego-art-remix-discount-hogwarts-crest.png" },
+const SAMPLES: { key: MessageKey; file: string }[] = [
+  { key: "sampleLenna", file: "png/lenna.png" },
+  { key: "sampleHogwarts", file: "png/lego-art-remix-discount-hogwarts-crest.png" },
 ];
 
 const DITHERS = new Set<QuantizeAlgorithm>(["floyd", "atkinson", "jarvis", "sierra"]);
@@ -31,6 +34,7 @@ function clampSize(value: number): number {
 }
 
 export function Studio() {
+  const { locale, setLocale, t } = useI18n();
   const [theme, setTheme] = useState<"dark" | "light">(() =>
     document.documentElement.dataset.theme === "light" ? "light" : "dark",
   );
@@ -95,7 +99,7 @@ export function Studio() {
 
   const openFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      setNotice("Choose an image file.");
+      setNotice(t("noticeImage"));
       return;
     }
     const url = URL.createObjectURL(file);
@@ -107,9 +111,9 @@ export function Studio() {
       setImageName(file.name);
     } catch {
       URL.revokeObjectURL(url);
-      setNotice("That image could not be opened.");
+      setNotice(t("noticeOpen"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!image) return;
@@ -278,7 +282,7 @@ export function Studio() {
     setEntries([...merged.entries()].map(([hex, count]) => ({ hex, count })));
     setPaletteId("custom");
     if (chosen.kind === "set") setUnlimited(false);
-    setNotice(`Merged ${chosen.name}.`);
+    setNotice(t("noticeMerged", { name: setLabel(id, locale).name }));
   }
 
   function changeWidth(value: number) {
@@ -302,9 +306,9 @@ export function Studio() {
       setPaletteId("custom");
       setUnlimited(next.every((entry) => entry.count >= 9999));
       setPaintColor(next[0].hex);
-      setNotice(`Imported ${next.length} colors.`);
+      setNotice(t("noticeImported", { count: next.length }));
     } catch {
-      setNotice("That file is not a stud map.");
+      setNotice(t("noticePalette"));
     }
   }
 
@@ -338,14 +342,24 @@ export function Studio() {
 
   function exportInstructions() {
     if (!mosaic) return;
+    const pieceName = t(PIECE_KEY[piece]);
     const html = instructionsHtml({
       title: imageName.replace(/\.[^.]+$/, ""),
       colors: mosaic.colors,
       width: mosaic.width,
       height: mosaic.height,
       depth: mosaic.depth,
-      pieceName: pieceById(piece).name,
+      pieceName,
       usage: mosaic.usage,
+      lang: locale === "zh" ? "zh-CN" : "en",
+      titleSuffix: t("instrTitle"),
+      meta: t("instrMeta", { width: mosaic.width, height: mosaic.height, piece: pieceName }),
+      piecesHeading: t("instrPieces"),
+      plateLabel: (number) => t("instrPlate", { number }),
+      rangeLabel: (fromRow, toRow, fromCol, toCol) => t("instrRange", { fromRow, toRow, fromCol, toCol }),
+      reliefHeading: t("instrRelief"),
+      reliefBody: t("instrReliefBody"),
+      labelColor: (hex) => colorLabel(hex, locale),
     });
     downloadText(`${slug(imageName)}-instructions.html`, html, "text/html");
   }
@@ -361,18 +375,26 @@ export function Studio() {
           </div>
           <div>
             <h1>Art Remix</h1>
-            <p>A mosaic studio for bricks you already have</p>
+            <p>{t("tagline")}</p>
           </div>
         </div>
         <div className="top-actions">
+          <div className="segmented lang" role="group" aria-label={t("language")}>
+            <button type="button" aria-pressed={locale === "zh"} onClick={() => setLocale("zh")}>
+              中文
+            </button>
+            <button type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
+              EN
+            </button>
+          </div>
           <button className="btn tiny" type="button" onClick={() => setShowEdits((value) => !value)} aria-pressed={showEdits}>
-            {showEdits ? "Edits shown" : "Edits hidden"}
+            {showEdits ? t("editsShown") : t("editsHidden")}
           </button>
           <button className="btn tiny" type="button" onClick={() => aboutRef.current?.showModal()}>
-            About
+            {t("about")}
           </button>
           <button className="btn tiny" type="button" onClick={() => setTheme((value) => (value === "dark" ? "light" : "dark"))}>
-            {theme === "dark" ? "Light" : "Dark"}
+            {theme === "dark" ? t("light") : t("dark")}
           </button>
         </div>
       </header>
@@ -492,42 +514,47 @@ export function Studio() {
               <span />
               <span />
             </div>
-            <h2>Turn a photo into studs.</h2>
+            <h2>{t("heroTitle")}</h2>
             <p className="hint" style={{ fontSize: 16 }}>
-              Pick a LEGO Art set, or any BrickLink colors you own. The picture stays in this browser.
+              {t("heroBody")}
             </p>
             <div className="drop">
-              <p>Drop a photo, paste one, or choose a file.</p>
+              <p>{t("dropHint")}</p>
               <button className="btn primary" type="button" onClick={() => fileRef.current?.click()}>
-                Choose photo
+                {t("choosePhoto")}
               </button>
               <div className="presets" style={{ justifyContent: "center", marginTop: 12 }}>
                 {SAMPLES.map((sample) => (
-                  <button key={sample.url} className="btn tiny" type="button" onClick={() => void openUrl(sample.url, sample.name)}>
-                    Try {sample.name}
+                  <button
+                    key={sample.file}
+                    className="btn tiny"
+                    type="button"
+                    onClick={() => void openUrl(`${import.meta.env.BASE_URL}${sample.file}`, t(sample.key))}
+                  >
+                    {t("trySample", { name: t(sample.key) })}
                   </button>
                 ))}
               </div>
             </div>
             <div className="features">
               <article>
-                <h3>Sets, not a guess</h3>
-                <p>Palettes know how many studs come in each Art set.</p>
+                <h3>{t("featureSetsTitle")}</h3>
+                <p>{t("featureSetsBody")}</p>
               </article>
               <article>
-                <h3>Fix it by hand</h3>
-                <p>Paint individual studs when a face or logo needs a nudge.</p>
+                <h3>{t("featurePaintTitle")}</h3>
+                <p>{t("featurePaintBody")}</p>
               </article>
               <article>
-                <h3>Build from a list</h3>
-                <p>Export a picture, printable plates, or a BrickLink wanted list.</p>
+                <h3>{t("featureExportTitle")}</h3>
+                <p>{t("featureExportBody")}</p>
               </article>
             </div>
           </div>
         </main>
       )}
 
-      {dragging && <div className="overlay">Drop to mosaic</div>}
+      {dragging && <div className="overlay">{t("dropOverlay")}</div>}
       {notice && <div className="toast">{notice}</div>}
       <input
         ref={fileRef}
@@ -541,23 +568,17 @@ export function Studio() {
         }}
       />
       <dialog ref={aboutRef}>
-        <h2>About Art Remix</h2>
-        <p>
-          This is a modified version of Lego Art Remix, updated on 16 October 2026. The original was made by Deb. It is
-          not affiliated with the LEGO Group. LEGO, BrickLink, and the set names belong to their owners.
-        </p>
-        <p>
-          Photos are processed locally. Piece counts and color names come from the original project’s BrickLink
-          palettes. The source is available under the GNU GPL v3.
-        </p>
+        <h2>{t("aboutTitle")}</h2>
+        <p>{t("aboutBody")}</p>
+        <p>{t("aboutLocal")}</p>
         <p>
           <a href="https://github.com/debkbanerji/lego-art-remix" target="_blank" rel="noreferrer">
-            Original source
+            {t("originalSource")}
           </a>
         </p>
         <form method="dialog">
           <button className="btn" type="submit">
-            Close
+            {t("close")}
           </button>
         </form>
       </dialog>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useI18n } from "../i18n/locale";
 import type { PieceId } from "../lib/pieces";
 import type { MosaicResult } from "../lib/pipeline";
 import { drawMosaic, hitTestStud } from "../lib/render";
@@ -49,6 +50,7 @@ export function Stage({
   onClearPaint,
   shortage,
 }: StageProps) {
+  const { t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hover, setHover] = useState<number | null>(null);
@@ -169,26 +171,26 @@ export function Stage({
   return (
     <section className="stage">
       <div className="stage-toolbar">
-        <div className="segmented" role="toolbar" aria-label="Tools">
-          <button type="button" aria-pressed={tool === "pan"} onClick={() => onTool("pan")} title="Pan (V)">
-            Pan
+        <div className="segmented" role="toolbar" aria-label={t("tools")}>
+          <button type="button" aria-pressed={tool === "pan"} onClick={() => onTool("pan")} title={t("panTitle")}>
+            {t("pan")}
           </button>
-          <button type="button" aria-pressed={tool === "paint"} onClick={() => onTool("paint")} title="Paint (B)">
-            Paint
+          <button type="button" aria-pressed={tool === "paint"} onClick={() => onTool("paint")} title={t("paintTitle")}>
+            {t("paint")}
           </button>
-          <button type="button" aria-pressed={tool === "sample"} onClick={() => onTool("sample")} title="Eyedropper (I)">
-            Pick
+          <button type="button" aria-pressed={tool === "sample"} onClick={() => onTool("sample")} title={t("pickTitle")}>
+            {t("pick")}
           </button>
         </div>
-        <div className="segmented" role="toolbar" aria-label="Preview">
+        <div className="segmented" role="toolbar" aria-label={t("preview")}>
           <button type="button" aria-pressed={view === "studs"} onClick={() => onView("studs")}>
-            Studs
+            {t("studs")}
           </button>
           <button type="button" aria-pressed={view === "split"} onClick={() => onView("split")}>
-            Split
+            {t("split")}
           </button>
           <button type="button" aria-pressed={view === "photo"} onClick={() => onView("photo")}>
-            Photo
+            {t("photo")}
           </button>
         </div>
         {view === "split" && (
@@ -199,19 +201,19 @@ export function Stage({
             max={1}
             step={0.01}
             value={split}
-            aria-label="Split position"
+            aria-label={t("splitPosition")}
             onChange={(event) => onSplit(Number(event.target.value))}
           />
         )}
         <span className="grow" />
         <button className="btn tiny" type="button" disabled={!canUndo} onClick={onUndo}>
-          Undo
+          {t("undo")}
         </button>
         <button className="btn tiny" type="button" disabled={!canRedo} onClick={onRedo}>
-          Redo
+          {t("redo")}
         </button>
         <button className="btn tiny" type="button" onClick={onClearPaint}>
-          Clear edits
+          {t("clearEdits")}
         </button>
         <button
           className="btn tiny"
@@ -221,12 +223,10 @@ export function Stage({
             fit();
           }}
         >
-          Fit
+          {t("fit")}
         </button>
       </div>
-      {shortage > 0 && (
-        <div className="banner">{shortage} studs go past the palette. Paint or swap colors until the list balances.</div>
-      )}
+      {shortage > 0 && <div className="banner">{t("shortage", { count: shortage })}</div>}
       <div
         ref={viewportRef}
         className={`viewport ${cursor}`}
@@ -261,7 +261,7 @@ export function Stage({
         onPointerLeave={() => setHover(null)}
       >
         <div className="canvas-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
-          <canvas ref={canvasRef} aria-label="Mosaic preview" />
+          <canvas ref={canvasRef} aria-label={t("mosaicPreview")} />
         </div>
       </div>
     </section>

@@ -17,9 +17,24 @@
   --track: rgba(255, 236, 214, 0.16);
   --chip: rgba(255, 255, 255, 0.04);
   --dot: rgba(255, 236, 214, 0.22);
-  font-family: Outfit, "Segoe UI", sans-serif;
+  font-family: Outfit, "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
   font-weight: 460;
   letter-spacing: 0.01em;
+}
+
+:root[data-locale="zh"] {
+  letter-spacing: 0;
+}
+
+:root[data-locale="zh"] .brand h1,
+:root[data-locale="zh"] .empty-card h2,
+:root[data-locale="zh"] .overlay {
+  font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0;
+}
+
+:root[data-locale="zh"] .empty-card h2 {
+  line-height: 1.2;
 }
 
 :root[data-theme="light"] {
@@ -92,6 +107,8 @@ button { cursor: pointer; }
 }
 .brand p { margin: 0; color: var(--muted); font-size: 13px; }
 .top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.lang { flex: 0 0 auto; }
+.lang button { flex: 0 0 auto; min-width: 42px; padding: 5px 8px; font-size: 12px; }
 
 .workspace {
   flex: 1;
