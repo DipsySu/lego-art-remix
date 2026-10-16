@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Art Remix — Lego mosaic studio</title>
+    <meta
+      name="description"
+      content="Turn a photo into a Lego stud mosaic using the pieces from a set you already own. Everything runs in the browser."
+    />
+    <meta name="theme-color" content="#16130f" />
+    <link rel="icon" href="/png/icon-192x192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,680&family=Outfit:wght@380;460;560;650&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      try {
+        const saved = localStorage.getItem("art-remix-theme");
+        const theme =
+          saved ||
+          (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+        document.documentElement.dataset.theme = theme;
+      } catch (_error) {
+        document.documentElement.dataset.theme = "dark";
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
