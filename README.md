@@ -2,6 +2,33 @@
 
 The Intelligent, Easy to Use Lego Mosaic Maker
 
+## Modern studio
+
+`studio/` is a rewritten interface for the same job: turn a photo into a stud mosaic from a LEGO Art set, or from BrickLink colors you already own. Images stay in the browser.
+
+```bash
+cd studio
+npm install
+npm test
+npm run dev
+```
+
+What changed on 16 October 2026:
+
+- One workspace instead of four cramped steps: frame the photo, then adjust, paint, and export beside the live mosaic.
+- Drag, scroll, and paste a picture. Try the included Lenna and Hogwarts samples.
+- Palettes still use the original set inventories. Counts are enforced by the two-phase and greedy matchers. Floyd, Atkinson, Jarvis, and Sierra dithering stay available when you are not limited by a set.
+- Paint individual studs, undo, and compare the photo with a split view.
+- Relief stacks brighter studs forward, or follows a depth picture you upload.
+- Export a PNG, printable plate instructions, a BrickLink wanted list, or the palette JSON used by the classic app.
+- English and Chinese. Switch with 中文 / EN in the header, or open `?lang=zh` / `?lang=en`. The choice is saved in this browser.
+
+The studio is built for this repository’s GitHub Pages site: <https://dipsysu.github.io/lego-art-remix/>. Pushes publish `studio/dist` to the `gh-pages` branch. In the repository settings, choose Pages → Deploy from a branch → `gh-pages` → `/ (root)`. Do not add a custom domain; that would replace this project site.
+
+The classic client remains in `app/`. It still has the in-browser MiDaS depth model and variable-size plate packing. The studio keeps 1×1 tiles, plates, and bricks, which covers the usual Art mosaic.
+
+This modified version is released under the GNU GPL v3, the same license as the original.
+
 This project is not affiliated with The Lego Group
 
 Made with ♥ by Deb
