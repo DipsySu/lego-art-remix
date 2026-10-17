@@ -55,8 +55,8 @@ export function Studio() {
   const [algorithm, setAlgorithm] = useState<QuantizeAlgorithm>("two-phase");
   const [metric, setMetric] = useState<DistanceMetric>("ciede2000");
   const [tie, setTie] = useState<TieMode>("alternating");
-  const [piece, setPiece] = useState<PieceId>("round-tile");
-  const [bleed, setBleed] = useState(true);
+  const [piece, setPiece] = useState<PieceId>("square-plate");
+  const [bleed, setBleed] = useState(false);
   const [paintColor, setPaintColor] = useState("#42c0fb");
   const [paint, setPaint] = useState<Record<number, string>>({});
   const [history, setHistory] = useState<Record<number, string>[]>([]);
