@@ -90,12 +90,19 @@ export function Studio() {
   }, [notice]);
 
   const openUrl = useCallback(async (url: string, name: string) => {
-    const next = await loadImage(url);
-    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
-    blobUrl.current = null;
-    setImage(next);
-    setImageName(name);
-  }, []);
+    try {
+      const next = await loadImage(url);
+      if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+      blobUrl.current = null;
+      setCrop(null);
+      setImage(next);
+      setImageName(name);
+      setDepthImage(null);
+      setDepthName(null);
+    } catch {
+      setNotice(t("noticeOpen"));
+    }
+  }, [t]);
 
   const openFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -107,8 +114,11 @@ export function Studio() {
       const next = await loadImage(url);
       if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
       blobUrl.current = url;
+      setCrop(null);
       setImage(next);
       setImageName(file.name);
+      setDepthImage(null);
+      setDepthName(null);
     } catch {
       URL.revokeObjectURL(url);
       setNotice(t("noticeOpen"));
@@ -204,12 +214,13 @@ export function Studio() {
     }
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) return;
+      if (target?.closest("input, textarea, select, button, [contenteditable], dialog[open]")) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
         else undo();
-      } else if (event.key.toLowerCase() === "v") setTool("pan");
+      } else if (event.metaKey || event.ctrlKey || event.altKey) return;
+      else if (event.key.toLowerCase() === "v") setTool("pan");
       else if (event.key.toLowerCase() === "b") setTool("paint");
       else if (event.key.toLowerCase() === "i") setTool("sample");
     }
@@ -313,11 +324,16 @@ export function Studio() {
   }
 
   async function loadDepth(file: File) {
-    const url = await readFileAsDataUrl(file);
-    const next = await loadImage(url);
-    setDepthImage(next);
-    setDepthName(file.name);
-    setDepthEnabled(true);
+    try {
+      if (!file.type.startsWith("image/")) throw new Error("image required");
+      const url = await readFileAsDataUrl(file);
+      const next = await loadImage(url);
+      setDepthImage(next);
+      setDepthName(file.name);
+      setDepthEnabled(true);
+    } catch {
+      setNotice(t("noticeOpen"));
+    }
   }
 
   function exportPng() {
@@ -555,7 +571,7 @@ export function Studio() {
       )}
 
       {dragging && <div className="overlay">{t("dropOverlay")}</div>}
-      {notice && <div className="toast">{notice}</div>}
+      {notice && <div className="toast" role="status" aria-live="polite">{notice}</div>}
       <input
         ref={fileRef}
         hidden

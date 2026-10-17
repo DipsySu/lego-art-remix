@@ -134,7 +134,7 @@ export function Stage({
 
   useEffect(() => {
     function down(event: KeyboardEvent) {
-      if (event.code === "Space" && !(event.target instanceof HTMLInputElement) && !(event.target instanceof HTMLTextAreaElement)) {
+      if (event.code === "Space" && !(event.target instanceof HTMLElement && event.target.closest("input, textarea, select, button, [contenteditable], dialog[open]"))) {
         event.preventDefault();
         setSpace(true);
       }
@@ -142,13 +142,33 @@ export function Stage({
     function up(event: KeyboardEvent) {
       if (event.code === "Space") setSpace(false);
     }
+    const resetSpace = () => setSpace(false);
+    window.addEventListener("blur", resetSpace);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => {
+      window.removeEventListener("blur", resetSpace);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
   }, []);
+
+  function changeZoom(factor: number) {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const next = Math.min(8, Math.max(0.15, zoom * factor));
+    const scale = next / zoom;
+    const x = viewport.clientWidth / 2;
+    const y = viewport.clientHeight / 2;
+    userMoved.current = true;
+    setPan({ x: x - (x - pan.x) * scale, y: y - (y - pan.y) * scale });
+    setZoom(next);
+  }
+
+  function endPointer() {
+    painting.current = false;
+    panning.current = null;
+  }
 
   function point(event: ReactPointerEvent) {
     const canvas = canvasRef.current;
@@ -212,9 +232,14 @@ export function Stage({
         <button className="btn tiny" type="button" disabled={!canRedo} onClick={onRedo}>
           {t("redo")}
         </button>
-        <button className="btn tiny" type="button" onClick={onClearPaint}>
+        <button className="btn tiny" type="button" onClick={onClearPaint} disabled={Object.keys(painted).length === 0}>
           {t("clearEdits")}
         </button>
+        <div className="zoom-controls" role="group" aria-label={t("zoom")}>
+          <button className="btn tiny" type="button" aria-label={t("decrease", { label: t("zoom") })} disabled={zoom <= 0.15} onClick={() => changeZoom(1 / 1.2)}>−</button>
+          <output>{Math.round(zoom * 100)}%</output>
+          <button className="btn tiny" type="button" aria-label={t("increase", { label: t("zoom") })} disabled={zoom >= 8} onClick={() => changeZoom(1.2)}>+</button>
+        </div>
         <button
           className="btn tiny"
           type="button"
@@ -231,7 +256,8 @@ export function Stage({
         ref={viewportRef}
         className={`viewport ${cursor}`}
         onPointerDown={(event) => {
-          if (!mosaic) return;
+          if (!mosaic || (event.button !== 0 && event.button !== 1)) return;
+          event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
           if (panMode || event.button === 1) {
             panning.current = { x: event.clientX, y: event.clientY, pan };
@@ -254,10 +280,9 @@ export function Stage({
           setHover(index);
           if (painting.current && tool === "paint") applyTool(index);
         }}
-        onPointerUp={() => {
-          painting.current = false;
-          panning.current = null;
-        }}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+        onLostPointerCapture={endPointer}
         onPointerLeave={() => setHover(null)}
       >
         <div className="canvas-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>

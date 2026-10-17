@@ -395,3 +395,34 @@ dialog a { color: var(--accent-2); }
   .features { grid-template-columns: 1fr; }
   .panel { overflow: visible; }
 }
+
+/* Keep the workspace usable on laptops and touch screens. */
+html { height: 100dvh; }
+.panel, .stage, .select, .stepper input { min-width: 0; }
+.hint { color: var(--muted); }
+.zoom-controls { display: flex; align-items: center; gap: 6px; }
+.zoom-controls output { min-width: 44px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.toast { position: fixed; z-index: 10; max-width: calc(100vw - 24px); }
+@media (min-width: 981px) and (max-width: 1280px) {
+  .workspace { grid-template-columns: 248px minmax(0, 1fr) 280px; gap: 8px; }
+  .panel-scroll { padding: 10px; }
+  .slider-row { grid-template-columns: 76px minmax(0, 1fr) 36px; }
+}
+@media (max-width: 980px) {
+  .stage { height: 70dvh; min-height: 480px; flex: none; }
+  .panel-scroll { overflow: visible; flex: none; }
+  .topbar { gap: 10px; padding: 12px; }
+  .top-actions { gap: 6px; }
+  .export-bar { position: sticky; bottom: 0; background: var(--bg-elev); z-index: 1; }
+}
+@media (max-width: 480px) {
+  .empty { padding: 12px; }
+  .empty-card { padding: 20px; border-radius: 20px; }
+  .workspace { padding: 0 8px 8px; }
+  .stage-toolbar { gap: 6px; padding: 8px; }
+  .stage-toolbar .grow { display: none; }
+  .stage-toolbar .segmented { flex: 1 1 auto; }
+  .btn.tiny, .segmented button { min-height: 36px; }
+  .swatch { width: 28px; height: 28px; }
+  .inventory li { grid-template-columns: 28px minmax(0, 1fr) auto auto; gap: 6px; }
+}

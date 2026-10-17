@@ -1,4 +1,4 @@
-import { shadeHex } from "./color";
+import { hexToRgb, shadeHex } from "./color";
 import type { PieceId } from "./pieces";
 import { pieceById } from "./pieces";
 
@@ -43,42 +43,93 @@ const PART_MM = 7.8;
 const STUD_DIAMETER_MM = 4.8;
 const STUD_HEIGHT_MM = 1.8;
 
+// A near-overhead view: keep the 8 mm pitch and 4.8 mm stud, with just
+// enough visible sidewall to show height. All surfaces share an upper-left light.
+const PART_SIZE = (STUD_CELL * PART_MM) / PITCH_MM;
+const PART_GAP = (STUD_CELL - PART_SIZE) / 2;
+const TOP_SQUASH = 0.94;
+
+function litColor(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgb(${r + (255 - r) * amount}, ${g + (255 - g) * amount}, ${b + (255 - b) * amount})`;
+}
+
+function plasticSurface(context: CanvasRenderingContext2D, hex: string, x: number, y: number, size: number) {
+  const finish = context.createLinearGradient(x, y, x + size * 0.8, y + size);
+  finish.addColorStop(0, litColor(hex, 0.12));
+  finish.addColorStop(0.35, litColor(hex, 0.035));
+  finish.addColorStop(0.72, hex);
+  finish.addColorStop(1, shadeHex(hex, 0.93));
+  return finish;
+}
+
+function ellipse(context: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number) {
+  context.beginPath();
+  context.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+}
+
 function drawLegoStud(context: CanvasRenderingContext2D, cx: number, cy: number, radius: number, hex: string) {
-  const wall = radius * (STUD_HEIGHT_MM / (STUD_DIAMETER_MM / 2)) * 0.42;
-  context.beginPath();
-  context.ellipse(cx, cy + radius * 0.78, radius * 0.92, wall * 0.55, 0, 0, Math.PI * 2);
-  context.fillStyle = "rgba(0,0,0,0.14)";
+  const wall = (STUD_CELL * STUD_HEIGHT_MM / PITCH_MM) * 0.28;
+  const ry = radius * TOP_SQUASH;
+  const topY = cy - wall * 0.55;
+
+  // A soft contact shadow falls behind the cylinder, outside its top face.
+  // Radial falloff avoids the outlined, sunken appearance of an inner ring.
+  context.save();
+  context.translate(cx + 1.1, cy + 1.5);
+  context.scale(1, TOP_SQUASH);
+  const shadow = context.createRadialGradient(0, 0, radius * 0.65, 0, 0, radius + 3.2);
+  shadow.addColorStop(0, "rgba(0,0,0,0.25)");
+  shadow.addColorStop(0.65, "rgba(0,0,0,0.18)");
+  shadow.addColorStop(1, "rgba(0,0,0,0)");
+  context.fillStyle = shadow;
+  context.fillRect(-radius - 4, -radius - 4, radius * 2 + 8, radius * 2 + 8);
+  context.restore();
+
+  const side = context.createLinearGradient(cx - radius, cy, cx + radius, cy + wall);
+  side.addColorStop(0, shadeHex(hex, 0.83));
+  side.addColorStop(0.35, shadeHex(hex, 0.72));
+  side.addColorStop(0.8, shadeHex(hex, 0.55));
+  side.addColorStop(1, shadeHex(hex, 0.67));
+  ellipse(context, cx, topY + wall, radius, ry);
+  context.fillStyle = side;
   context.fill();
 
-  context.beginPath();
-  context.arc(cx, cy + wall * 0.55, radius, 0, Math.PI * 2);
-  context.fillStyle = shadeHex(hex, 0.8);
+  // The bevel belongs on the silhouette; the cap remains a flat plastic disk.
+  ellipse(context, cx, topY, radius, ry);
+  context.fillStyle = plasticSurface(context, hex, cx - radius, topY - ry, radius * 2);
   context.fill();
+  context.save();
+  context.clip();
+  const reflection = context.createRadialGradient(cx - radius * 0.38, topY - ry * 0.5, 0, cx - radius * 0.2, topY - ry * 0.25, radius * 1.3);
+  reflection.addColorStop(0, "rgba(255,255,255,0.13)");
+  reflection.addColorStop(0.6, "rgba(255,255,255,0.025)");
+  reflection.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = reflection;
+  context.fillRect(cx - radius, topY - ry, radius * 2, ry * 2);
+  context.restore();
 
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.98, 0, Math.PI * 2);
-  context.fillStyle = hex;
-  context.fill();
-
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.9, Math.PI * 1.08, Math.PI * 1.92);
-  context.strokeStyle = "rgba(255,255,255,0.55)";
-  context.lineWidth = Math.max(0.7, radius * 0.07);
+  const rim = context.createLinearGradient(cx - radius, topY - ry, cx + radius, topY + ry);
+  rim.addColorStop(0, "rgba(255,255,255,0.48)");
+  rim.addColorStop(0.35, "rgba(255,255,255,0.12)");
+  rim.addColorStop(0.65, "rgba(0,0,0,0.02)");
+  rim.addColorStop(1, "rgba(0,0,0,0.18)");
+  ellipse(context, cx, topY, radius - 0.3, ry - 0.3);
+  context.strokeStyle = rim;
+  context.lineWidth = 0.6;
   context.stroke();
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.9, Math.PI * 0.12, Math.PI * 0.88);
-  context.strokeStyle = "rgba(0,0,0,0.16)";
-  context.stroke();
 
-  const fontSize = Math.max(3.2, radius * 0.46);
-  context.font = `700 ${fontSize}px Arial, sans-serif`;
+  // Restrained molded lettering, using a filled relief instead of hollow text.
+  const fontSize = radius * 0.43;
+  context.font = `900 ${fontSize}px Arial, sans-serif`;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.lineWidth = Math.max(0.45, radius * 0.045);
-  context.strokeStyle = "rgba(0,0,0,0.28)";
-  context.strokeText("LEGO", cx, cy + fontSize * 0.06);
-  context.strokeStyle = "rgba(255,255,255,0.22)";
-  context.strokeText("LEGO", cx, cy - fontSize * 0.08);
+  context.fillStyle = "rgba(0,0,0,0.16)";
+  context.fillText("LEGO", cx + 0.2, topY + 0.45);
+  context.fillStyle = "rgba(255,255,255,0.24)";
+  context.fillText("LEGO", cx - 0.15, topY - 0.15);
+  context.fillStyle = litColor(hex, 0.07);
+  context.fillText("LEGO", cx, topY + 0.1);
 }
 
 function drawSquarePiece(
@@ -90,31 +141,37 @@ function drawSquarePiece(
   tall: boolean,
   level: number,
 ): StudMark {
-  const gap = 1.4;
-  const left = x + gap;
-  const size = STUD_CELL - gap * 2;
-  const extra = level * 5;
-  const front = (tall ? size * 0.24 : size * 0.13) + extra * 0.35;
-  const top = y + gap - extra;
-  const topHeight = Math.max(size * 0.62, size - front);
+  const left = x + PART_GAP;
+  const size = PART_SIZE;
+  const extra = level * 3;
+  const front = (tall ? 3.3 : stud ? 1.6 : 1.1) + extra * 0.3;
+  const top = y + PART_GAP - extra;
+  const topHeight = size - front;
+  const corner = 1.15;
 
-  context.fillStyle = shadeHex(hex, 0.72);
-  roundRect(context, left, top + topHeight - 3, size, front + 3, 2.2);
+  roundRect(context, left, top + 1, size, size - 1, corner);
+  const side = context.createLinearGradient(left, top, left + size, top + size);
+  side.addColorStop(0, shadeHex(hex, 0.82));
+  side.addColorStop(1, shadeHex(hex, 0.58));
+  context.fillStyle = side;
   context.fill();
 
-  roundRect(context, left, top, size, topHeight, 2.2);
-  context.fillStyle = hex;
+  roundRect(context, left, top, size, topHeight, corner);
+  context.fillStyle = plasticSurface(context, hex, left, top, size);
   context.fill();
-  context.strokeStyle = "rgba(255,255,255,0.22)";
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(left + 2.2, top + 1.2);
-  context.lineTo(left + size - 2.2, top + 1.2);
+  // Narrow injection-molded edge, rather than a thick black grid or white frame.
+  const bevel = context.createLinearGradient(left, top, left + size, top + topHeight);
+  bevel.addColorStop(0, "rgba(255,255,255,0.4)");
+  bevel.addColorStop(0.45, "rgba(255,255,255,0.04)");
+  bevel.addColorStop(1, "rgba(0,0,0,0.16)");
+  roundRect(context, left + 0.35, top + 0.35, size - 0.7, topHeight - 0.7, corner);
+  context.strokeStyle = bevel;
+  context.lineWidth = 0.7;
   context.stroke();
 
   const cx = left + size / 2;
   const cy = top + topHeight / 2;
-  if (stud) drawLegoStud(context, cx, cy - size * 0.02, (size * STUD_DIAMETER_MM) / PART_MM / 2, hex);
+  if (stud) drawLegoStud(context, cx, cy, (STUD_CELL * STUD_DIAMETER_MM / PITCH_MM) / 2, hex);
   return { x: cx, y: cy, round: false };
 }
 
@@ -126,28 +183,32 @@ function drawRoundPiece(
   stud: boolean,
   level: number,
 ): StudMark {
+  const radius = PART_SIZE / 2;
+  const wall = (stud ? 1.8 : 1.2) + level * 0.3;
   const cx = x + STUD_CELL / 2;
-  const cy = y + STUD_CELL / 2 - level * 3;
-  const radius = ((STUD_CELL * PART_MM) / PITCH_MM) / 2;
-  const wall = (STUD_CELL * 3.2) / PITCH_MM * 0.55 + level;
+  const cy = y + STUD_CELL / 2 - wall / 2 - level * 3;
+  const ry = radius * TOP_SQUASH;
 
-  context.beginPath();
-  context.arc(cx, cy + wall * 0.65, radius, 0, Math.PI * 2);
-  context.fillStyle = shadeHex(hex, 0.72);
+  ellipse(context, cx, cy + wall, radius, ry);
+  const side = context.createLinearGradient(cx - radius, cy, cx + radius, cy + ry);
+  side.addColorStop(0, shadeHex(hex, 0.82));
+  side.addColorStop(1, shadeHex(hex, 0.57));
+  context.fillStyle = side;
   context.fill();
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.98, 0, Math.PI * 2);
-  context.fillStyle = hex;
+
+  ellipse(context, cx, cy, radius, ry);
+  context.fillStyle = plasticSurface(context, hex, cx - radius, cy - ry, radius * 2);
   context.fill();
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.9, Math.PI * 1.1, Math.PI * 1.9);
-  context.strokeStyle = "rgba(255,255,255,0.35)";
-  context.lineWidth = 1;
+  const bevel = context.createLinearGradient(cx - radius, cy - ry, cx + radius, cy + ry);
+  bevel.addColorStop(0, "rgba(255,255,255,0.42)");
+  bevel.addColorStop(0.4, "rgba(255,255,255,0.05)");
+  bevel.addColorStop(1, "rgba(0,0,0,0.2)");
+  ellipse(context, cx, cy, radius - 0.35, ry - 0.35);
+  context.strokeStyle = bevel;
+  context.lineWidth = 0.7;
   context.stroke();
 
-  if (stud) {
-    drawLegoStud(context, cx, cy - radius * 0.08, (radius * STUD_DIAMETER_MM) / PART_MM, hex);
-  }
+  if (stud) drawLegoStud(context, cx, cy, (STUD_CELL * STUD_DIAMETER_MM / PITCH_MM) / 2, hex);
   return { x: cx, y: cy, round: true };
 }
 
@@ -185,6 +246,27 @@ export function drawMosaic(context: CanvasRenderingContext2D, options: DrawOptio
   context.fillRect(0, 0, size.width, size.height);
 
   const depth = options.view === "studs" ? options.depth : null;
+  // Reuse each color/height within this frame instead of rebuilding its gradients
+  // for every stud. Padding retains raised pieces and their contact shadows.
+  const sprites = new Map<string, { canvas: HTMLCanvasElement; center: StudMark }>();
+  const padding = 24;
+  const spriteSize = STUD_CELL + padding * 2;
+  function drawPiece(x: number, y: number, hex: string, level: number): StudMark {
+    const key = `${hex}:${level}`;
+    let sprite = sprites.get(key);
+    if (!sprite) {
+      const tile = document.createElement("canvas");
+      tile.width = tile.height = Math.round(spriteSize * dpr);
+      const tileContext = tile.getContext("2d");
+      if (!tileContext) return drawStud(context, x, y, hex, options.piece, level);
+      tileContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const center = drawStud(tileContext, padding, padding, hex, options.piece, level);
+      sprite = { canvas: tile, center };
+      sprites.set(key, sprite);
+    }
+    context.drawImage(sprite.canvas, x - padding, y - padding, spriteSize, spriteSize);
+    return { x: x + sprite.center.x - padding, y: y + sprite.center.y - padding, round: sprite.center.round };
+  }
   for (let row = 0; row < height; row += 1) {
     for (let col = 0; col < width; col += 1) {
       const index = row * width + col;
@@ -195,7 +277,7 @@ export function drawMosaic(context: CanvasRenderingContext2D, options: DrawOptio
         options.photo != null && (options.view === "photo" || (options.view === "split" && col < width * options.split));
       const center = showPhoto && options.photo
         ? (drawPhotoCell(context, options.photo, index, x, y), { x: x + STUD_CELL / 2, y: y + STUD_CELL / 2 })
-        : drawStud(context, x, y, colors[index], options.piece, level);
+        : drawPiece(x, y, colors[index], level);
       const round = "round" in center && center.round && !showPhoto;
 
       if (options.painted?.has(index) && !showPhoto) {

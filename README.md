@@ -13,6 +13,21 @@ npm test
 npm run dev
 ```
 
+### Repository branches
+
+- `master`: active development and GitHub Pages deployment source.
+- `gh-pages`: generated deployment output; do not merge it into `master`.
+- `price-optimization`: unfinished classic-app experiment with four commits outside `master`; retained for separate review.
+
+On 17 October 2026, seven branches whose tips were ancestors of `master` were removed: `better-paintbrush`, `cursor/brick-studs-68d0`, `cursor/lego-stud-shape-68d0`, `cursor/modern-mosaic-studio-68d0`, `gdd`, `quantization-error`, and `variable-pixel-dimensions`. Their history remains reachable from `master`. New feature branches should target `master` and be deleted after merging.
+
+### Studio usability updates
+
+- Canvas zoom buttons and a percentage readout support touch screens and keyboards.
+- Narrower laptop panels, larger mobile controls, and a sticky mobile export bar keep editing tools accessible.
+- Space activates focused controls; modifier shortcuts no longer switch tools accidentally. Interrupted pointer gestures release paint and pan state.
+- Failed sample/depth-image loads show a status message. Replacing the source photo resets its crop and clears the previous depth image.
+
 What changed on 16 October 2026:
 
 - One workspace instead of four cramped steps: frame the photo, then adjust, paint, and export beside the live mosaic.

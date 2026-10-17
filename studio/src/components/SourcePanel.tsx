@@ -118,6 +118,8 @@ export function SourcePanel({
               drag.current = { x: event.clientX, y: event.clientY, crop };
             }}
             onPointerMove={(event) => panTo(event.clientX, event.clientY)}
+            onPointerCancel={() => { drag.current = null; }}
+            onLostPointerCapture={() => { drag.current = null; }}
             onPointerUp={() => {
               drag.current = null;
             }}
