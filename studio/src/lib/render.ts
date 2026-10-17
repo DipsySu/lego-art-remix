@@ -2,7 +2,7 @@ import { shadeHex } from "./color";
 import type { PieceId } from "./pieces";
 import { pieceById } from "./pieces";
 
-export const STUD_CELL = 36;
+export const STUD_CELL = 42;
 
 export interface DrawOptions {
   colors: string[];
@@ -31,6 +31,129 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, w: n
   context.closePath();
 }
 
+interface StudMark {
+  x: number;
+  y: number;
+  round: boolean;
+}
+
+function drawStudNub(context: CanvasRenderingContext2D, cx: number, cy: number, radius: number, hex: string) {
+  context.beginPath();
+  context.ellipse(cx, cy + radius * 0.72, radius * 0.92, radius * 0.28, 0, 0, Math.PI * 2);
+  context.fillStyle = "rgba(0,0,0,0.22)";
+  context.fill();
+
+  context.beginPath();
+  context.arc(cx, cy + radius * 0.16, radius, 0, Math.PI * 2);
+  context.fillStyle = shadeHex(hex, 0.58);
+  context.fill();
+
+  const cap = context.createRadialGradient(
+    cx - radius * 0.38,
+    cy - radius * 0.42,
+    radius * 0.08,
+    cx,
+    cy + radius * 0.08,
+    radius,
+  );
+  cap.addColorStop(0, shadeHex(hex, 1.34));
+  cap.addColorStop(0.48, hex);
+  cap.addColorStop(1, shadeHex(hex, 0.74));
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.86, 0, Math.PI * 2);
+  context.fillStyle = cap;
+  context.fill();
+
+  context.beginPath();
+  context.arc(cx, cy + radius * 0.02, radius * 0.36, 0, Math.PI * 2);
+  context.lineWidth = Math.max(0.9, radius * 0.09);
+  context.strokeStyle = "rgba(0,0,0,0.28)";
+  context.stroke();
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.36, Math.PI * 1.1, Math.PI * 1.9);
+  context.strokeStyle = "rgba(255,255,255,0.4)";
+  context.stroke();
+
+  context.beginPath();
+  context.ellipse(cx - radius * 0.26, cy - radius * 0.32, radius * 0.3, radius * 0.16, -0.65, 0, Math.PI * 2);
+  context.fillStyle = "rgba(255,255,255,0.45)";
+  context.fill();
+}
+
+function drawSquarePiece(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  hex: string,
+  stud: boolean,
+  tall: boolean,
+  level: number,
+): StudMark {
+  const gap = 1.4;
+  const left = x + gap;
+  const size = STUD_CELL - gap * 2;
+  const extra = level * 5;
+  const front = (tall ? size * 0.24 : size * 0.13) + extra * 0.35;
+  const top = y + gap - extra;
+  const topHeight = Math.max(size * 0.62, size - front);
+
+  context.fillStyle = shadeHex(hex, 0.5);
+  roundRect(context, left, top + topHeight - 3, size, front + 3, 2.4);
+  context.fill();
+  context.fillStyle = "rgba(0,0,0,0.16)";
+  context.fillRect(left + size - 3.2, top + topHeight - 1, 3.2, front + 1);
+
+  const face = context.createLinearGradient(left, top, left + size * 0.2, top + topHeight);
+  face.addColorStop(0, shadeHex(hex, 1.14));
+  face.addColorStop(0.55, hex);
+  face.addColorStop(1, shadeHex(hex, 0.86));
+  roundRect(context, left, top, size, topHeight, 2.6);
+  context.fillStyle = face;
+  context.fill();
+  context.strokeStyle = "rgba(255,255,255,0.28)";
+  context.lineWidth = 1.1;
+  context.beginPath();
+  context.moveTo(left + 2.4, top + 1.4);
+  context.lineTo(left + size - 2.4, top + 1.4);
+  context.stroke();
+
+  const cx = left + size / 2;
+  const cy = top + topHeight / 2;
+  if (stud) drawStudNub(context, cx, cy, size * 0.3, hex);
+  return { x: cx, y: cy, round: false };
+}
+
+function drawRoundPiece(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  hex: string,
+  stud: boolean,
+  level: number,
+): StudMark {
+  const cx = x + STUD_CELL / 2;
+  const cy = y + STUD_CELL / 2 - level * 4;
+  const radius = STUD_CELL * 0.45;
+  const wall = 4.2 + level * 2.4;
+
+  context.fillStyle = shadeHex(hex, 0.46);
+  context.beginPath();
+  context.arc(cx, cy + wall * 0.55, radius, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "rgba(0,0,0,0.2)";
+  context.beginPath();
+  context.ellipse(cx, cy + wall * 0.85, radius * 0.86, 2.4, 0, 0, Math.PI);
+  context.fill();
+
+  if (stud) {
+    drawStudNub(context, cx, cy + 1, radius * 0.78, hex);
+    drawStudNub(context, cx, cy - radius * 0.18, radius * 0.5, hex);
+  } else {
+    drawStudNub(context, cx, cy, radius * 0.9, hex);
+  }
+  return { x: cx, y: cy, round: true };
+}
+
 function drawStud(
   context: CanvasRenderingContext2D,
   x: number,
@@ -38,55 +161,10 @@ function drawStud(
   hex: string,
   piece: PieceId,
   level: number,
-): { x: number; y: number } {
+): StudMark {
   const spec = pieceById(piece);
-  const round = spec.shape === "round";
-  const lip = level * STUD_CELL * 0.16;
-  const centerX = x + STUD_CELL / 2;
-  const radius = STUD_CELL * 0.34;
-  const centerY = Math.max(y + radius + 1, y + STUD_CELL / 2 - lip * 0.72);
-
-  if (lip > 0) {
-    context.fillStyle = shadeHex(hex, 0.48);
-    const stemTop = centerY + radius * 0.15;
-    const stemBottom = y + STUD_CELL - 3;
-    if (round) {
-      context.fillRect(centerX - radius * 0.82, stemTop, radius * 1.64, Math.max(0, stemBottom - stemTop));
-      context.beginPath();
-      context.ellipse(centerX, stemBottom, radius * 0.82, 3.2, 0, 0, Math.PI * 2);
-      context.fill();
-    } else {
-      context.fillRect(x + 4, stemTop, STUD_CELL - 8, Math.max(0, stemBottom - stemTop + 2));
-    }
-  }
-
-  context.fillStyle = hex;
-  if (round) {
-    context.beginPath();
-    context.arc(centerX, centerY, STUD_CELL * 0.36, 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.ellipse(centerX - STUD_CELL * 0.1, centerY - STUD_CELL * 0.1, STUD_CELL * 0.1, STUD_CELL * 0.06, -0.6, 0, Math.PI * 2);
-    context.fillStyle = "rgba(255,255,255,0.3)";
-    context.fill();
-  } else {
-    const height = Math.max(10, STUD_CELL - 6 - lip * 0.45);
-    roundRect(context, x + 3, centerY - height / 2, STUD_CELL - 6, height, 3);
-    context.fillStyle = hex;
-    context.fill();
-  }
-
-  if (spec.stud) {
-    context.beginPath();
-    context.arc(centerX, centerY, STUD_CELL * 0.15, 0, Math.PI * 2);
-    context.fillStyle = shadeHex(hex, 1.12);
-    context.fill();
-    context.lineWidth = 1.15;
-    context.strokeStyle = "rgba(0,0,0,0.28)";
-    context.stroke();
-  }
-
-  return { x: centerX, y: centerY };
+  if (spec.shape === "round") return drawRoundPiece(context, x, y, hex, spec.stud, level);
+  return drawSquarePiece(context, x, y, hex, spec.stud, spec.id === "brick", level);
 }
 
 function drawPhotoCell(context: CanvasRenderingContext2D, pixels: Uint8ClampedArray, index: number, x: number, y: number) {
@@ -106,7 +184,7 @@ export function drawMosaic(context: CanvasRenderingContext2D, options: DrawOptio
   canvas.style.height = `${size.height}px`;
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
   context.clearRect(0, 0, size.width, size.height);
-  context.fillStyle = "#141210";
+  context.fillStyle = "#1a1918";
   context.fillRect(0, 0, size.width, size.height);
 
   const depth = options.view === "studs" ? options.depth : null;
@@ -121,14 +199,14 @@ export function drawMosaic(context: CanvasRenderingContext2D, options: DrawOptio
       const center = showPhoto && options.photo
         ? (drawPhotoCell(context, options.photo, index, x, y), { x: x + STUD_CELL / 2, y: y + STUD_CELL / 2 })
         : drawStud(context, x, y, colors[index], options.piece, level);
-      const round = pieceById(options.piece).shape === "round" && !showPhoto;
+      const round = "round" in center && center.round && !showPhoto;
 
       if (options.painted?.has(index) && !showPhoto) {
         context.strokeStyle = "rgba(255, 200, 87, 0.95)";
         context.lineWidth = 1.6;
         context.beginPath();
         if (round) context.arc(center.x, center.y, STUD_CELL * 0.42, 0, Math.PI * 2);
-        else context.rect(x + 2.5, y + 2.5, STUD_CELL - 5, STUD_CELL - 5);
+        else context.rect(x + 2, y + 2, STUD_CELL - 4, STUD_CELL - 4);
         context.stroke();
       }
       if (options.hover === index) {
@@ -136,7 +214,7 @@ export function drawMosaic(context: CanvasRenderingContext2D, options: DrawOptio
         context.lineWidth = 2;
         context.beginPath();
         if (round) context.arc(center.x, center.y, STUD_CELL * 0.46, 0, Math.PI * 2);
-        else context.rect(x + 1, y + 1, STUD_CELL - 2, STUD_CELL - 2);
+        else context.rect(x + 1.2, y + 1.2, STUD_CELL - 2.4, STUD_CELL - 2.4);
         context.stroke();
       }
     }
