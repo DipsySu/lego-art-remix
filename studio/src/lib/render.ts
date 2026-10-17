@@ -37,47 +37,48 @@ interface StudMark {
   round: boolean;
 }
 
-function drawStudNub(context: CanvasRenderingContext2D, cx: number, cy: number, radius: number, hex: string) {
+// Official geometry, millimetres. Pitch is the centre-to-centre grid.
+const PITCH_MM = 8;
+const PART_MM = 7.8;
+const STUD_DIAMETER_MM = 4.8;
+const STUD_HEIGHT_MM = 1.8;
+
+function drawLegoStud(context: CanvasRenderingContext2D, cx: number, cy: number, radius: number, hex: string) {
+  const wall = radius * (STUD_HEIGHT_MM / (STUD_DIAMETER_MM / 2)) * 0.42;
   context.beginPath();
-  context.ellipse(cx, cy + radius * 0.72, radius * 0.92, radius * 0.28, 0, 0, Math.PI * 2);
-  context.fillStyle = "rgba(0,0,0,0.22)";
+  context.ellipse(cx, cy + radius * 0.78, radius * 0.92, wall * 0.55, 0, 0, Math.PI * 2);
+  context.fillStyle = "rgba(0,0,0,0.14)";
   context.fill();
 
   context.beginPath();
-  context.arc(cx, cy + radius * 0.16, radius, 0, Math.PI * 2);
-  context.fillStyle = shadeHex(hex, 0.58);
-  context.fill();
-
-  const cap = context.createRadialGradient(
-    cx - radius * 0.38,
-    cy - radius * 0.42,
-    radius * 0.08,
-    cx,
-    cy + radius * 0.08,
-    radius,
-  );
-  cap.addColorStop(0, shadeHex(hex, 1.34));
-  cap.addColorStop(0.48, hex);
-  cap.addColorStop(1, shadeHex(hex, 0.74));
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.86, 0, Math.PI * 2);
-  context.fillStyle = cap;
+  context.arc(cx, cy + wall * 0.55, radius, 0, Math.PI * 2);
+  context.fillStyle = shadeHex(hex, 0.8);
   context.fill();
 
   context.beginPath();
-  context.arc(cx, cy + radius * 0.02, radius * 0.36, 0, Math.PI * 2);
-  context.lineWidth = Math.max(0.9, radius * 0.09);
+  context.arc(cx, cy, radius * 0.98, 0, Math.PI * 2);
+  context.fillStyle = hex;
+  context.fill();
+
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.9, Math.PI * 1.08, Math.PI * 1.92);
+  context.strokeStyle = "rgba(255,255,255,0.55)";
+  context.lineWidth = Math.max(0.7, radius * 0.07);
+  context.stroke();
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.9, Math.PI * 0.12, Math.PI * 0.88);
+  context.strokeStyle = "rgba(0,0,0,0.16)";
+  context.stroke();
+
+  const fontSize = Math.max(3.2, radius * 0.46);
+  context.font = `700 ${fontSize}px Arial, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.lineWidth = Math.max(0.45, radius * 0.045);
   context.strokeStyle = "rgba(0,0,0,0.28)";
-  context.stroke();
-  context.beginPath();
-  context.arc(cx, cy, radius * 0.36, Math.PI * 1.1, Math.PI * 1.9);
-  context.strokeStyle = "rgba(255,255,255,0.4)";
-  context.stroke();
-
-  context.beginPath();
-  context.ellipse(cx - radius * 0.26, cy - radius * 0.32, radius * 0.3, radius * 0.16, -0.65, 0, Math.PI * 2);
-  context.fillStyle = "rgba(255,255,255,0.45)";
-  context.fill();
+  context.strokeText("LEGO", cx, cy + fontSize * 0.06);
+  context.strokeStyle = "rgba(255,255,255,0.22)";
+  context.strokeText("LEGO", cx, cy - fontSize * 0.08);
 }
 
 function drawSquarePiece(
@@ -97,29 +98,23 @@ function drawSquarePiece(
   const top = y + gap - extra;
   const topHeight = Math.max(size * 0.62, size - front);
 
-  context.fillStyle = shadeHex(hex, 0.5);
-  roundRect(context, left, top + topHeight - 3, size, front + 3, 2.4);
+  context.fillStyle = shadeHex(hex, 0.72);
+  roundRect(context, left, top + topHeight - 3, size, front + 3, 2.2);
   context.fill();
-  context.fillStyle = "rgba(0,0,0,0.16)";
-  context.fillRect(left + size - 3.2, top + topHeight - 1, 3.2, front + 1);
 
-  const face = context.createLinearGradient(left, top, left + size * 0.2, top + topHeight);
-  face.addColorStop(0, shadeHex(hex, 1.14));
-  face.addColorStop(0.55, hex);
-  face.addColorStop(1, shadeHex(hex, 0.86));
-  roundRect(context, left, top, size, topHeight, 2.6);
-  context.fillStyle = face;
+  roundRect(context, left, top, size, topHeight, 2.2);
+  context.fillStyle = hex;
   context.fill();
-  context.strokeStyle = "rgba(255,255,255,0.28)";
-  context.lineWidth = 1.1;
+  context.strokeStyle = "rgba(255,255,255,0.22)";
+  context.lineWidth = 1;
   context.beginPath();
-  context.moveTo(left + 2.4, top + 1.4);
-  context.lineTo(left + size - 2.4, top + 1.4);
+  context.moveTo(left + 2.2, top + 1.2);
+  context.lineTo(left + size - 2.2, top + 1.2);
   context.stroke();
 
   const cx = left + size / 2;
   const cy = top + topHeight / 2;
-  if (stud) drawStudNub(context, cx, cy, size * 0.3, hex);
+  if (stud) drawLegoStud(context, cx, cy - size * 0.02, (size * STUD_DIAMETER_MM) / PART_MM / 2, hex);
   return { x: cx, y: cy, round: false };
 }
 
@@ -132,24 +127,26 @@ function drawRoundPiece(
   level: number,
 ): StudMark {
   const cx = x + STUD_CELL / 2;
-  const cy = y + STUD_CELL / 2 - level * 4;
-  const radius = STUD_CELL * 0.45;
-  const wall = 4.2 + level * 2.4;
+  const cy = y + STUD_CELL / 2 - level * 3;
+  const radius = ((STUD_CELL * PART_MM) / PITCH_MM) / 2;
+  const wall = (STUD_CELL * 3.2) / PITCH_MM * 0.55 + level;
 
-  context.fillStyle = shadeHex(hex, 0.46);
   context.beginPath();
-  context.arc(cx, cy + wall * 0.55, radius, 0, Math.PI * 2);
+  context.arc(cx, cy + wall * 0.65, radius, 0, Math.PI * 2);
+  context.fillStyle = shadeHex(hex, 0.72);
   context.fill();
-  context.fillStyle = "rgba(0,0,0,0.2)";
   context.beginPath();
-  context.ellipse(cx, cy + wall * 0.85, radius * 0.86, 2.4, 0, 0, Math.PI);
+  context.arc(cx, cy, radius * 0.98, 0, Math.PI * 2);
+  context.fillStyle = hex;
   context.fill();
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.9, Math.PI * 1.1, Math.PI * 1.9);
+  context.strokeStyle = "rgba(255,255,255,0.35)";
+  context.lineWidth = 1;
+  context.stroke();
 
   if (stud) {
-    drawStudNub(context, cx, cy + 1, radius * 0.78, hex);
-    drawStudNub(context, cx, cy - radius * 0.18, radius * 0.5, hex);
-  } else {
-    drawStudNub(context, cx, cy, radius * 0.9, hex);
+    drawLegoStud(context, cx, cy - radius * 0.08, (radius * STUD_DIAMETER_MM) / PART_MM, hex);
   }
   return { x: cx, y: cy, round: true };
 }
